@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> Auth System - Validation Edition - Admin Panel</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .auth-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 320px;
+            text-align: center;
+        }
+        h2 { color: #1c1e21; margin-bottom: 20px; }
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            outline: none;
+        }
+        input:focus { border-color: #1877f2; }
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+            transition: 0.3s;
+        }
+        .primary-btn { background: #1877f2; color: white; }
+        .primary-btn:hover { background: #166fe5; }
+        .secondary-btn { background: #42b72a; color: white; }
+        .secondary-btn:hover { background: #36a420; }
+        .toggle-link {
+            font-size: 14px;
+            color: #1877f2;
+            cursor: pointer;
+            text-decoration: underline;
+            display: block;
+            margin-top: 15px;
+        }
+        #welcome-msg { color: #27ae60; font-size: 18px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="auth-container">
+    <div id="auth-ui">
+        <h2 id="form-title">Σύνδεση</h2>
+        <input type="text" id="username" placeholder="Όνομα χρήστη">
+        <input type="password" id="password" placeholder="Κωδικός πρόσβασης">
+
+        <input type="password" id="confirm-password" placeholder="Επιβεβαίωση κωδικού" style="display: none;">
+
+        <button class="primary-btn" id="main-btn">Είσοδος</button>
+        <span class="toggle-link" id="toggle-auth">Δεν έχετε λογαριασμό; Εγγραφή</span>
+    </div>
+
+    <div id="user-session" style="display: none;">
+        <h2>Καλωσήρθες!</h2>
+        <p id="welcome-msg"></p>
+        <button class="secondary-btn" id="logout-btn">Αποσύνδεση</button>
+    </div>
+</div>
+
+
+<div style="margin-top: 50px; background: white; padding:20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); width:320px">
+  <h3> Λίστα χρηστών (Admin)</h3>
+  <ul id="admin-list" style="text-align:left; list-style:none; padding:0;"></ul>
+  <button onclick="clearAll()" style="background: #e74c3c; color:white; font-size:12px;"> Διαγραφή όλων </button>
+
+
+<script>
+// 1. ΕΠΙΛΟΓΗ ΣΤΟΙΧΕΙΩΝ (DOM Elements)
+const title = document.getElementById('form-title');
+const usernameInput = document.getElementById('username');
+const passwordInput = document.getElementById('password');
+const confirmInput = document.getElementById('confirm-password');
+const mainBtn = document.getElementById('main-btn');
+const toggleLink = document.getElementById('toggle-auth');
+const authUi = document.getElementById('auth-ui');
+const userSession = document.getElementById('user-session');
+const welcomeMsg = document.getElementById('welcome-msg');
+const logoutBtn = document.getElementById('logout-btn');
+const adminList = document.getElementById('admin-list');
+
+let isLoginMode = true;
+
+// 2. ΣΥΝΑΡΤΗΣΕΙΣ UI (Εμφάνιση/Αλλαγή περιβάλλοντος)
+function updateUI() {
+    title.innerText = isLoginMode ? "Σύνδεση" : "Εγγραφή";
+    mainBtn.innerText = isLoginMode ? "Είσοδος" : "Δημιουργία Λογαριασμού";
+    toggleLink.innerText = isLoginMode ? "Δεν έχετε λογαριασμό; Εγγραφή" : "Έχετε ήδη λογαριασμό; Σύνδεση";
+    confirmInput.style.display = isLoginMode ? "none" : "block";
+}
+
+function showSession(user) {
+    authUi.style.display = 'none';
+    userSession.style.display = 'block';
+    welcomeMsg.innerText = `Γεια σου, ${user}!`;
+}
+
+// 3. ΣΥΝΑΡΤΗΣΕΙΣ VALIDATION (Επικύρωση)
+function validateForm(user, pass, confirmPass) {
+    if (user.length < 3) {
+        alert("Το όνομα χρήστη πρέπει να είναι τουλάχιστον 3 χαρακτήρες!");
+        return false;
+    }
+    if (pass.length < 6) {
+        alert("Ο κωδικός πρέπει να είναι τουλάχιστον 6 χαρακτήρες!");
+        return false;
+    }
+    if (!isLoginMode && pass !== confirmPass) {
+        alert("Οι κωδικοί δεν ταιριάζουν!");
+        return false;
+    }
+    return true;
+}
+
+// 4. ΛΟΓΙΚΗ ΕΓΓΡΑΦΗΣ & ΣΥΝΔΕΣΗΣ
+function signUp(user, pass, confirmPass) {
+    if (!validateForm(user, pass, confirmPass)) return;
+
+    let users = JSON.parse(localStorage.getItem('appUsers')) || [];
+    if (users.find(u => u.username === user)) {
+        alert("Το όνομα χρήστη χρησιμοποιείται ήδη!");
+        return;
+    }
+
+    users.push({ username: user, password: pass });
+    localStorage.setItem('appUsers', JSON.stringify(users));
+
+    alert("Η εγγραφή πέτυχε! Τώρα μπορείτε να συνδεθείτε.");
+
+    // Καθαρισμός και επιστροφή στο Login
+    usernameInput.value = "";
+    passwordInput.value = "";
+    confirmInput.value = "";
+    isLoginMode = true;
+    updateUI();
+    refreshAdminList(); // Ενημέρωση του πίνακα admin
+}
+
+function login(user, pass) {
+    let users = JSON.parse(localStorage.getItem('appUsers')) || [];
+    const foundUser = users.find(u => u.username === user && u.password === pass);
+
+    if (foundUser) {
+        localStorage.setItem('loggedInUser', user);
+        showSession(user);
+    } else {
+        alert("Λάθος στοιχεία! Δοκιμάστε ξανά.");
+    }
+}
+
+// 5. ΛΟΓΙΚΗ ADMIN PANEL
+function refreshAdminList() {
+    if (!adminList) return;
+    const users = JSON.parse(localStorage.getItem('appUsers')) || [];
+    adminList.innerHTML = users.length === 0 ? "<li>Κανένας χρήστης</li>" : "";
+
+    users.forEach(u => {
+        const li = document.createElement('li');
+        li.innerHTML = `👤 <b>${u.username}</b> (Pass: ${u.password})`;
+        li.style.borderBottom = "1px solid #eee";
+        li.style.padding = "5px 0";
+        adminList.appendChild(li);
+    });
+}
+
+function clearAll() {
+    if(confirm("Σίγουρα; Θα χαθούν όλοι οι λογαριασμοί!")) {
+        localStorage.removeItem('appUsers');
+        location.reload();
+    }
+}
+
+// 6. EVENT LISTENERS
+toggleLink.addEventListener('click', () => {
+    isLoginMode = !isLoginMode;
+    updateUI();
+});
+
+mainBtn.addEventListener('click', () => {
+    const user = usernameInput.value.trim();
+    const pass = passwordInput.value.trim();
+    const confirmPass = confirmInput.value.trim();
+
+    if (isLoginMode) {
+        login(user, pass);
+    } else {
+        signUp(user, pass, confirmPass);
+    }
+});
+
+logoutBtn.addEventListener('click', () => {
+    localStorage.removeItem('loggedInUser');
+    location.reload();
+});
+
+// 7. ΕΚΤΕΛΕΣΗ ΚΑΤΑ ΤΟ LOAD
+window.onload = () => {
+    const loggedIn = localStorage.getItem('loggedInUser');
+    if (loggedIn) showSession(loggedIn);
+    refreshAdminList();
+};
+</script>
+
+</body>
+</html>
